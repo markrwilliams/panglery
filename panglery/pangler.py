@@ -44,6 +44,7 @@ class Pangler(object):
         self.id = id
         self.hooks = []
         self.dependencies = collections.defaultdict(set)
+        self.order = []
         self.instance = None
 
     def subscribe(self, _func=None, needs=(), returns=(), modifies=(),
@@ -71,8 +72,7 @@ class Pangler(object):
 
         if conditions.get('event') and receivers:
             self.dependencies[conditions['event']].update(receivers)
-
-        self.order = tsort(self.dependencies)
+            self.order = tsort(self.dependencies)
 
         def deco(func):
             self.hooks.append(_Hook(

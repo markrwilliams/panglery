@@ -8,6 +8,9 @@ def tsort(graph):
          whose edges indicate reverse dependencies."""
     level = set(graph) - set(node for bunch in graph.itervalues()
                                  for node in bunch)
+    if not level:
+        raise ValueError('Cycle at root level!')
+
     stack = [(False, False)]     
     visited = set()
     edges = []
@@ -28,4 +31,3 @@ def tsort(graph):
     edges.pop()                 # clean up our False parent
     edges.reverse()
     return edges
-

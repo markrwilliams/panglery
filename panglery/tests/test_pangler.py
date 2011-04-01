@@ -60,6 +60,45 @@ class TestPangler(unittest.TestCase):
         p.trigger(foo=3)
         self.assert_(self.fired)
 
+    def test_dependencies_and_order(self):
+        p = panglery.Pangler()
+
+        self.assert_(not p.dependencies)
+        self.assert_(not p.order)
+
+        @p.subscribe(event='event1', modifies=['param1'], receivers=['event2'])
+        def event1_generator(self, param1):
+            return {'param1': 'Not needed'}
+
+        @p.subscribe(event='event2', needs=['param1'])
+        def event2_receiver(self, param1):
+            pass
+
+        self.assert_(p.dependencies['event1'] == set(['event2']))
+        self.assert_(p.order == ['event1', 'event2'])
+
+    def test_receiver_triggering(self):
+        p = panglery.Pangler()
+
+        @p.subscribe(event='alert1', needs=['param1'], returns=['param2'], receivers=['event3'])
+        def alert1_receiver(p, param1):
+            self.assert_('event1' in param1)
+            return {'param2': 'param2 alert1'}
+
+        @p.subscribe(event='event1', modifies=['param1'], receivers=['event2', 'alert1'])
+        def event1_generator(p, param1):
+            return {'param1': param1 + ' event1'}
+
+        @p.subscribe(event='event3', needs=['param2'])
+        def event3_receiver(p, param2):
+            self.assert_('alert1' in param2)
+
+        @p.subscribe(event='event2', needs=['param1'])
+        def event2_receiver(p, param1):
+            self.assert_('event1' in param1)
+
+        p.trigger(event='event1', spam='spam')
+
     def test_binding(self):
         self.fired = False
         class TestClass(object):
