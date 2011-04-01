@@ -5,6 +5,8 @@ import functools
 import warnings
 import inspect
 import weakref
+import collections
+from tsort import tsort
 
 _DEFAULT_ID = object()
 
@@ -41,10 +43,11 @@ class Pangler(object):
         super(Pangler, self).__init__()
         self.id = id
         self.hooks = []
+        self.dependencies = collections.defaultdict(set)
         self.instance = None
 
     def subscribe(self, _func=None, needs=(), returns=(), modifies=(),
-            **conditions):
+                  receivers=(), **conditions):
         """Add a hook to a pangler.
 
         This method can either be used as a decorator for a function or method,
@@ -65,6 +68,12 @@ class Pangler(object):
         if not needs:
             raise ValueError("tried to hook nothing")
         returns = set(returns) | modifies
+
+        if conditions.get('event') and receivers:
+            self.dependencies[conditions['event']].update(receivers)
+
+        self.order = tsort(self.dependencies)
+
         def deco(func):
             self.hooks.append(_Hook(
                 func, needs, parameters, returns, conditions))
@@ -92,8 +101,15 @@ class Pangler(object):
 
         if not event:
             raise ValueError("tried to trigger nothing")
-        for hook in self.hooks:
-            if hook.matches(event):
+
+        if self.dependencies[event.get('event')]:
+            start = self.order.index(event['event'])
+            for dep in self.order[start:]:
+                event['event'] = dep
+                for hook in (h for h in self.hooks if h.matches(event)):
+                    hook.execute(self, event)
+        else:
+            for hook in (h for h in self.hooks if h.matches(event)):
                 hook.execute(self, event)
 
     def clone(self):
