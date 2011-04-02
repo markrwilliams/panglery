@@ -32,4 +32,4 @@ class TestTSort(unittest.TestCase):
 
     def test_succeed_on_lower_cycles(self):
         lower_level_cyclic = {'a': ['b'], 'b': ['c'], 'c': ['b']}
-        self.assert_(tsort(lower_level_cyclic) == ['a', 'b', 'c'])
+        self.assertEqual(tsort(lower_level_cyclic), ['a', 'b', 'c'])

@@ -123,6 +123,8 @@ class Pangler(object):
 
         p = type(self)(self.id)
         p.hooks = list(self.hooks)
+        p.dependencies = self.dependencies.copy()
+        p.order = list(self.order)
         p.instance = self.instance
         return p
 
@@ -139,6 +141,10 @@ class Pangler(object):
         p = self.clone()
         for other in others:
             p.hooks.extend(other.hooks)
+            for condition, dependencies in other.dependencies.iteritems():
+                p.dependencies[condition].update(dependencies)
+        if p.dependencies:
+            p.order = tsort(p.dependencies)
         return p
 
     def bind(self, instance):

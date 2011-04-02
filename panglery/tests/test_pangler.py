@@ -1,4 +1,5 @@
 import unittest
+import collections
 import panglery.pangler
 
 class TestPangler(unittest.TestCase):
@@ -74,8 +75,8 @@ class TestPangler(unittest.TestCase):
         def event2_receiver(self, param1):
             pass
 
-        self.assert_(p.dependencies['event1'] == set(['event2']))
-        self.assert_(p.order == ['event1', 'event2'])
+        self.assertEqual(p.dependencies['event1'], set(['event2']))
+        self.assertEqual(p.order, ['event1', 'event2'])
 
     def test_receiver_triggering(self):
         p = panglery.Pangler()
@@ -222,20 +223,25 @@ class TestPangler(unittest.TestCase):
 
     def test_combining(self):
         self.fired = 0
+        self.combined_deps = collections.defaultdict(set)
+        self.combined_deps['test'] = set(['event2', 'event3'])
 
         p = panglery.Pangler()
-        @p.subscribe(event='test')
+        @p.subscribe(event='test', receivers = ['event2'])
         def test_hook(p):
             self.fired |= 1
 
         p2 = panglery.Pangler()
-        @p2.subscribe(event='test')
+        @p2.subscribe(event='test', receivers=['event3'])
         def test_hook2(p):
             self.fired |= 2
 
         p3 = p.combine(p2)
         p3.trigger(event='test')
         self.assertEqual(self.fired, 3)
+        self.assertEqual(p3.dependencies, self.combined_deps)
+        self.assert_(p3.order in (['test', 'event2', 'event3'],
+                                  ['test', 'event3', 'event2']))
 
 class TestPanglerAggregate(unittest.TestCase):
     def test_subclass_binding(self):
